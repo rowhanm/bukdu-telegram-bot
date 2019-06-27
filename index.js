@@ -4,6 +4,15 @@ const bot = new TelegramBot(token, {polling: true});
 
 const schedule = require('node-schedule');
 
+var keyboard_options = {
+      reply_markup: JSON.stringify({
+        inline_keyboard: [
+          [{ text: '👍', callback_data: 'read' }, { text: '👎', callback_data: 'dontread' }],
+        ],
+        resize_keyboard: true
+      })
+    };
+
 bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id, `Hi ${msg.chat.first_name}! I'm Tim and i'll be your guide in your book reading journey!`);
   bot.sendMessage(msg.chat.id, `At least till the Bukdu app comes out.`);
@@ -34,10 +43,11 @@ bot.onText(/\/remind (.+)/, (msg, match) => {
     let hh = time.substring(0, time.indexOf(":"));
     let mm = time.substring(time.indexOf(":") + 1);
     let clean_book = book.replace(/\s/g, '_');
+    // const cron_string = `*/2 * * * *`
     const cron_string = `${mm} ${hh} * * *`
     console.log(`Adding ${msg.chat.id}<>${clean_book}`);
     const j = schedule.scheduleJob(`${msg.chat.id}<>${clean_book}`, cron_string, function(){
-      bot.sendMessage(msg.chat.id, `Time to read ${book}!!`);
+      bot.sendMessage(msg.chat.id, `Time to read ${book}!!`, keyboard_options);
       console.log('Sending daily reminder');
     });
   }
@@ -69,4 +79,23 @@ bot.onText(/\/list/, (msg) => {
     name = name.replace(/_/g, ' ');
     bot.sendMessage(msg.chat.id, `${name}`);
   });
+});
+
+bot.on('callback_query', function onCallbackQuery(callbackQuery) {
+  const action = callbackQuery.data;
+  const msg = callbackQuery.message;
+  const opts = {
+    chat_id: msg.chat.id,
+    message_id: msg.message_id,
+  };
+  let text;
+
+  if (action === 'read') {
+    text = 'Thanks for reading!';
+  }
+  if (action === 'dontread') {
+    text = 'Please read soon!';
+  }
+
+  bot.editMessageText(text, opts);
 });
