@@ -12,6 +12,7 @@ bot.onText(/\/start/, (msg) => {
 
 bot.onText(/\/help/, (msg) => {
   bot.sendMessage(msg.chat.id, `Send a /remind {book name} {time(hh:mm)} message to set a book and a reminder`);
+  bot.sendMessage(msg.chat.id, "E.g. /remind Half blood prince 21:30 or /remind 1984 09:15");
   bot.sendMessage(msg.chat.id, `Send a /remove {book name} message to remove an existing reminder`);
   bot.sendMessage(msg.chat.id, `Send a /list message to see all your existing reminders`);
 });
@@ -30,30 +31,23 @@ bot.onText(/\/remind (.+)/, (msg, match) => {
     bot.sendMessage(msg.chat.id, "E.g. /remind Half blood prince 21:30 or /remind 1984 09:15");
   } else {
     bot.sendMessage(msg.chat.id, `Nice choice ${book} is a good book and ${time} is statistically the best time to read!`);
-    let data = {
-      id: msg.chat.id,
-      book,
-      time
-    }
     let hh = time.substring(0, time.indexOf(":"));
     let mm = time.substring(time.indexOf(":") + 1);
     let clean_book = book.replace(/\s/g, '_');
     const cron_string = `${mm} ${hh} * * *`
-    const j = schedule.scheduleJob(`${msg.chat.id}<>${clean_book}`, `*/3 * * * *`, function(){
+    console.log(`Adding ${msg.chat.id}<>${clean_book}`);
+    const j = schedule.scheduleJob(`${msg.chat.id}<>${clean_book}`, cron_string, function(){
       bot.sendMessage(msg.chat.id, `Time to read ${book}!!`);
       console.log('Sending daily reminder');
     });
-    // const j = schedule.scheduleJob(`${msg.chat.id}<>${book}`, cron_string, function(){
-    //   bot.sendMessage(msg.chat.id, `Time to read ${book}!!`);
-    //   console.log('Sending daily reminder');
-    // });
   }
 });
 
 bot.onText(/\/remove (.+)/, (msg, match) => {
   let params = match.slice(1)[0];
   params = params.replace(/\s/g, '_');
-  if (schedule.scheduledJobs.includes(`${msg.chat.id}<>${params}`)) {
+  console.log(`Removing ${msg.chat.id}<>${params}`);
+  if (!!schedule.scheduledJobs[`${msg.chat.id}<>${params}`]) {
     const my_job = schedule.scheduledJobs[`${msg.chat.id}<>${params}`];
     my_job.cancel();
     bot.sendMessage(msg.chat.id, `Canceled reminder, hopefully you finished reading`);
