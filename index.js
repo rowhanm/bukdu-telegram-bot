@@ -1,6 +1,17 @@
 const TelegramBot = require('node-telegram-bot-api');
 const token = '812346853:AAFRrmH0uJPZbc24DtIY-bl0NH0J5jFm1gI';
 const bot = new TelegramBot(token, {polling: true});
+// const loki = require("lokijs");
+// const db = new loki('loki.json');
+// const userData = db.getCollection('userData');
+// const clickData = db.getCollection('clickData');
+
+// if (!userData) {
+//   const userData = db.addCollection('userData');
+// }
+// if (!clickData) {
+//   const clickData = db.addCollection('clickData');
+// }  
 
 const schedule = require('node-schedule');
 
@@ -26,7 +37,19 @@ bot.onText(/\/help/, (msg) => {
   bot.sendMessage(msg.chat.id, `Send a /list message to see all your existing reminders`);
 });
 
-bot.onText(/\/remind (.+)/, (msg, match) => {
+
+bot.on("message", (msg) => {
+    let checker = msg.text.toString().toLowerCase(); 
+    if (checker === "/remind") {
+      bot.sendMessage(msg.chat.id, "Incorrect usage, /remind {book name} {time hh:mm}");
+      bot.sendMessage(msg.chat.id, "Make sure book name is space separated!");
+      bot.sendMessage(msg.chat.id, "E.g. /remind Half blood prince 21:30 or /remind 1984 09:15");
+    } else if (checker === "/remove") {
+      bot.sendMessage(msg.chat.id, "Incorrect usage, /remove {book name}");
+    }
+});
+
+bot.onText(/\/remind(.+)/, (msg, match) => {
   let params = match.slice(1)[0].split(" ");
   let book = params.slice(0, params.length - 1).join(" ");
   let time = params[params.length-1];
@@ -34,7 +57,7 @@ bot.onText(/\/remind (.+)/, (msg, match) => {
     bot.sendMessage(msg.chat.id, "Incorrect usage, /remind {book name} {time hh:mm}");
     bot.sendMessage(msg.chat.id, "Make sure book name is space separated!");
     bot.sendMessage(msg.chat.id, "E.g. /remind Half blood prince 21:30 or /remind 1984 09:15");
-  } else if (time.indexOf(":") < 0) {
+  } else if (time.indexOf(":") < 2) {
     bot.sendMessage(msg.chat.id, "Incorrect usage, /remind {book name} {time hh:mm}");
     bot.sendMessage(msg.chat.id, "Make sure book name is space separated!");
     bot.sendMessage(msg.chat.id, "E.g. /remind Half blood prince 21:30 or /remind 1984 09:15");
@@ -43,22 +66,26 @@ bot.onText(/\/remind (.+)/, (msg, match) => {
     let hh = time.substring(0, time.indexOf(":"));
     let mm = time.substring(time.indexOf(":") + 1);
     let clean_book = book.replace(/\s/g, '_');
+    let entryVariable = `${msg.chat.id}<>${clean_book}`
     // const cron_string = `*/2 * * * *`
     const cron_string = `${mm} ${hh} * * *`
-    console.log(`Adding ${msg.chat.id}<>${clean_book}`);
-    const j = schedule.scheduleJob(`${msg.chat.id}<>${clean_book}`, cron_string, function(){
+    console.log(`Adding ${entryVariable}`);
+    const j = schedule.scheduleJob(entryVariable, cron_string, function(){
       bot.sendMessage(msg.chat.id, `Time to read ${book}!!`, keyboard_options);
       console.log('Sending daily reminder');
     });
+    // userData.insert({id: msg.chat.id, book, time});
+    // clickData.insert({id: msg.chat.id, book, yes: 0, no: 0});
   }
 });
 
 bot.onText(/\/remove (.+)/, (msg, match) => {
   let params = match.slice(1)[0];
   params = params.replace(/\s/g, '_');
-  console.log(`Removing ${msg.chat.id}<>${params}`);
-  if (!!schedule.scheduledJobs[`${msg.chat.id}<>${params}`]) {
-    const my_job = schedule.scheduledJobs[`${msg.chat.id}<>${params}`];
+  let entryVariable = `${msg.chat.id}<>_${params}`
+  console.log(`Removing ${entryVariable}`);
+  if (!!schedule.scheduledJobs[entryVariable]) {
+    const my_job = schedule.scheduledJobs[entryVariable];
     my_job.cancel();
     bot.sendMessage(msg.chat.id, `Canceled reminder, hopefully you finished reading`);
   } else {
@@ -81,6 +108,11 @@ bot.onText(/\/list/, (msg) => {
   });
 });
 
+// bot.onText(/\/stats/, (msg) => {
+//   var user = clickData.findObject({id: msg.chat.id});
+//   console.log(user);
+// });
+
 bot.on('callback_query', function onCallbackQuery(callbackQuery) {
   const action = callbackQuery.data;
   const msg = callbackQuery.message;
@@ -89,13 +121,16 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
     message_id: msg.message_id,
   };
   let text;
-
+  // var user = clickData.findObject({id: msg.chat.id});
   if (action === 'read') {
     text = 'Thanks for reading!';
+    // user.yes = user.yes + 1; 
   }
   if (action === 'dontread') {
     text = 'Please read soon!';
+    // user.no = user.no + 1; 
   }
+  // clickData.update(user);
 
   bot.editMessageText(text, opts);
 });
