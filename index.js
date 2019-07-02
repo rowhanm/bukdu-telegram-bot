@@ -1,17 +1,11 @@
 const TelegramBot = require('node-telegram-bot-api');
 const token = '812346853:AAFRrmH0uJPZbc24DtIY-bl0NH0J5jFm1gI';
 const bot = new TelegramBot(token, {polling: true});
-// const loki = require("lokijs");
-// const db = new loki('loki.json');
-// const userData = db.getCollection('userData');
-// const clickData = db.getCollection('clickData');
+const loki = require("lokijs");
+const db = new loki('loki.json');
 
-// if (!userData) {
-//   const userData = db.addCollection('userData');
-// }
-// if (!clickData) {
-//   const clickData = db.addCollection('clickData');
-// }  
+const userData = db.addCollection('userData');
+const clickData = db.addCollection('clickData');
 
 const schedule = require('node-schedule');
 
@@ -74,8 +68,8 @@ bot.onText(/\/remind(.+)/, (msg, match) => {
       bot.sendMessage(msg.chat.id, `Time to read ${book}!!`, keyboard_options);
       console.log('Sending daily reminder');
     });
-    // userData.insert({id: msg.chat.id, book, time});
-    // clickData.insert({id: msg.chat.id, book, yes: 0, no: 0});
+    userData.insert({id: msg.chat.id, book, time});
+    clickData.insert({id: msg.chat.id, book, yes: 0, no: 0});
   }
 });
 
@@ -108,10 +102,11 @@ bot.onText(/\/list/, (msg) => {
   });
 });
 
-// bot.onText(/\/stats/, (msg) => {
-//   var user = clickData.findObject({id: msg.chat.id});
-//   console.log(user);
-// });
+bot.onText(/\/stats/, (msg) => {
+  var user = clickData.findObject({id: msg.chat.id});
+  bot.sendMessage(msg.chat.id, `Times read ${user.book}: ${user.yes}`);
+  bot.sendMessage(msg.chat.id, `Times procrastinated ${user.book}: ${user.no}`);
+});
 
 bot.on('callback_query', function onCallbackQuery(callbackQuery) {
   const action = callbackQuery.data;
@@ -121,16 +116,16 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
     message_id: msg.message_id,
   };
   let text;
-  // var user = clickData.findObject({id: msg.chat.id});
+  var user = clickData.findObject({id: msg.chat.id});
   if (action === 'read') {
     text = 'Thanks for reading!';
-    // user.yes = user.yes + 1; 
+    user.yes += 1; 
   }
   if (action === 'dontread') {
     text = 'Please read soon!';
-    // user.no = user.no + 1; 
+    user.no += 1; 
   }
-  // clickData.update(user);
+  clickData.update(user);
 
   bot.editMessageText(text, opts);
 });
