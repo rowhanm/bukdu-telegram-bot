@@ -104,8 +104,8 @@ bot.onText(/\/list/, (msg) => {
 
 bot.onText(/\/stats/, (msg) => {
   var user = clickData.findObject({id: msg.chat.id});
-  bot.sendMessage(msg.chat.id, `Times read ${user.book}: ${user.yes}`);
-  bot.sendMessage(msg.chat.id, `Times procrastinated ${user.book}: ${user.no}`);
+  bot.sendMessage(msg.chat.id, `Times read: ${user.yes}`);
+  bot.sendMessage(msg.chat.id, `Times procrastinated: ${user.no}`);
 });
 
 bot.on('callback_query', function onCallbackQuery(callbackQuery) {
