@@ -2,10 +2,32 @@ const TelegramBot = require('node-telegram-bot-api');
 const token = '812346853:AAFRrmH0uJPZbc24DtIY-bl0NH0J5jFm1gI';
 const bot = new TelegramBot(token, {polling: true});
 const loki = require("lokijs");
-const db = new loki('loki.json');
 
-const userData = db.addCollection('userData');
-const clickData = db.addCollection('clickData');
+const db = new loki('loki.json', {
+ 	autosave: true, 
+	autosaveInterval: 10000 
+});
+
+let userData;
+let clickData;
+
+function databaseInitialize() {
+  userData = db.getCollection('userData');
+  clickData = db.getCollection('clickData');
+  if (userData === null) {
+    userData = db.addCollection("userData");
+  }
+  if (clickData === null) {
+    clickData = db.addCollection("clickData");
+  }
+}
+
+db.loadDatabase({}, function(err) {
+  if (err) throw err;
+  databaseInitialize();
+  console.log("db initialized");
+});
+
 
 const schedule = require('node-schedule');
 
@@ -126,6 +148,6 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
     user.no += 1; 
   }
   clickData.update(user);
-
+  db.saveDatabase();
   bot.editMessageText(text, opts);
 });
