@@ -1,5 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 const token = '812346853:AAFRrmH0uJPZbc24DtIY-bl0NH0J5jFm1gI';
+// const token = '729825458:AAHZY05zU_Aurt64-09vCPZl0FAQso7Stso';
 const bot = new TelegramBot(token, {polling: true});
 const loki = require("lokijs");
 
@@ -20,6 +21,12 @@ function databaseInitialize() {
   if (clickData === null) {
     clickData = db.addCollection("clickData");
   }
+  userData.find().forEach(element => {
+    const j = schedule.scheduleJob(element.entryVariable, element.cron_string, function(){
+      bot.sendMessage(element.id, `Time to read ${element.book}!!`, keyboard_options);
+      console.log('Sending daily reminder');
+    });
+  });
 }
 
 db.loadDatabase({}, function(err) {
@@ -34,7 +41,7 @@ const schedule = require('node-schedule');
 var keyboard_options = {
       reply_markup: JSON.stringify({
         inline_keyboard: [
-          [{ text: '👍', callback_data: 'read' }, { text: '👎', callback_data: 'dontread' }],
+          [{ text: `I'll read now!`, callback_data: 'read' }, { text: `I'll read later`, callback_data: 'dontread' }],
         ],
         resize_keyboard: true
       })
@@ -90,8 +97,9 @@ bot.onText(/\/remind(.+)/, (msg, match) => {
       bot.sendMessage(msg.chat.id, `Time to read ${book}!!`, keyboard_options);
       console.log('Sending daily reminder');
     });
-    userData.insert({id: msg.chat.id, book, time});
+    userData.insert({id: msg.chat.id, book, time, cron_string, entryVariable});
     clickData.insert({id: msg.chat.id, book, yes: 0, no: 0});
+    db.saveDatabase();
   }
 });
 
@@ -104,23 +112,18 @@ bot.onText(/\/remove (.+)/, (msg, match) => {
     const my_job = schedule.scheduledJobs[entryVariable];
     my_job.cancel();
     bot.sendMessage(msg.chat.id, `Canceled reminder, hopefully you finished reading`);
+    // userData.chain().find({id: msg.chat.id, book: params}).remove();
+    // Remove from lokijs not working, cant find fix online. Shall look at it later
   } else {
     bot.sendMessage(msg.chat.id, `No such reminder. Make sure the book name matches what you entered while creating it`);
   }
 })
 
 bot.onText(/\/list/, (msg) => {
-  let list = Object.keys(schedule.scheduledJobs);
-  new_list = list.filter((elem) => {
-    return elem.indexOf(msg.chat.id) >= 0;
-  });
-  if (new_list.length < 1) {
-    bot.sendMessage(msg.chat.id, `No reminders set!`);
-  }
-  new_list.forEach(element => {
-    let name = element.split("<>")[1];
-    name = name.replace(/_/g, ' ');
-    bot.sendMessage(msg.chat.id, `${name}`);
+  let all = userData.find({id: msg.chat.id});
+  const userThoughts = all.filter(thought => thought.id === msg.chat.id);
+  userThoughts.forEach(element => {
+    bot.sendMessage(msg.chat.id, `${element.book} -> ${element.time}`);
   });
 });
 
